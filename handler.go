@@ -10,21 +10,31 @@ import (
 func (s *Statez) ReadynessHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if s.CheckServiceReadyState() {
+	isReady := s.CheckServiceReadyState()
+	if isReady {
 		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 
-	dat := struct {
-		Data []ServiceHandler `json:"registered_services"`
-	}{}
-
-	for _, v := range s.registry {
-		dat.Data = append(dat.Data, v.GetInfo())
+	type Response struct {
+		RegisteredServices []ServiceHandler `json:"registered_services"`
+		SystemReady        bool             `json:"system_ready"`
 	}
 
-	if err := json.NewEncoder(w).Encode(dat); err != nil {
+	services := make([]ServiceHandler, 0, len(s.registry))
+	s.registryMu.RLock()
+	for _, v := range s.registry {
+		services = append(services, v.GetInfo())
+	}
+	s.registryMu.RUnlock()
+
+	response := Response{
+		RegisteredServices: services,
+		SystemReady:        isReady,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

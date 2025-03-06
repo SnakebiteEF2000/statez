@@ -11,10 +11,10 @@ type Statez struct {
 	registryMu sync.RWMutex
 }
 
-func (s *Statez) RegisterService(svc Service) {
+func (s *Statez) RegisterService(svc ...Service) {
 	s.registryMu.Lock()
 	defer s.registryMu.Unlock()
-	s.registry = append(s.registry, svc)
+	s.registry = append(s.registry, svc...)
 }
 
 func (s *Statez) CheckServiceReadyState() bool {
