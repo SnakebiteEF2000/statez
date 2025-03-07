@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -8,10 +9,10 @@ import (
 )
 
 func main() {
-	sz := statez.Statez{}
+	sz := statez.NewStatez("example")
 
 	testSvc := statez.NewServiceHandlerWithOpts("mqtt handler")
-	testSvc.StateReady()
+	testSvc.StateNotReady()
 
 	test2Svc := statez.NewServiceHandlerWithOpts("web server")
 	test2Svc.StateReady()
@@ -20,6 +21,8 @@ func main() {
 	test3Svc.StateIgnore()
 
 	sz.RegisterService(testSvc, test2Svc, test3Svc)
+
+	fmt.Println(testSvc.GetState())
 
 	http.HandleFunc("/ready", sz.ReadynessHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))

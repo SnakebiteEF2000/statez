@@ -1,76 +1,62 @@
 package statez
 
 import (
-	"encoding/json"
 	"sync/atomic"
 )
 
+type ServiceState int32
+
 const (
-	StateNotReady = 0
-	StateReady    = 1
-	StateIgnore   = -1
+	StateIgnore ServiceState = iota - 1
+	StateNotReady
+	StateReady
 )
 
+var readyStateName = map[ServiceState]string{
+	StateIgnore:   "ignored",
+	StateNotReady: "not ready",
+	StateReady:    "ready",
+}
+
+func (ss ServiceState) String() string {
+	return readyStateName[ss]
+}
+
 type Service interface {
+	GetState() ServiceState
 	GetName() string
-	IsReady() int
-	GetInfo() ServiceHandler
 	// IsHealthy() int for now disabled
 }
 
-type ServiceHandler struct {
+type StateHandler struct {
 	Name  string `json:"name"`
 	Ready int32  `json:"state"` // 0 = no ready; 1 = ready; -1 = ignore state
 }
 
-func (s *ServiceHandler) StateReady() {
+func NewServiceHandlerWithOpts(name string) *StateHandler { // add the opts part not just a name variable
+	return &StateHandler{Name: name, Ready: 0}
+}
+
+func (s *StateHandler) StateReady() {
 	atomic.StoreInt32(&s.Ready, 1)
 }
 
-func (s *ServiceHandler) StateNotReady() {
+func (s *StateHandler) StateNotReady() {
 	atomic.StoreInt32(&s.Ready, 0)
 }
 
-func (s *ServiceHandler) StateIgnore() {
+func (s *StateHandler) StateIgnore() {
 	atomic.StoreInt32(&s.Ready, -1)
 }
 
-func (s *ServiceHandler) IsReady() int {
-	return int(atomic.LoadInt32(&s.Ready))
+func (s *StateHandler) GetState() ServiceState {
+	return ServiceState(atomic.LoadInt32(&s.Ready))
 }
 
-func (s *ServiceHandler) GetName() string {
+func (s *StateHandler) GetName() string {
 	return s.Name
 }
 
-func (s *ServiceHandler) GetInfo() ServiceHandler {
-	return *s
-}
-
-func NewServiceHandlerWithOpts(name string) *ServiceHandler { // add the opts part not just a name variable
-	return &ServiceHandler{Name: name, Ready: 0}
-}
-
-func (s *ServiceHandler) MarshalJSON() ([]byte, error) {
-	type Alias ServiceHandler
-
-	var readableState string
-	switch s.Ready {
-	case StateReady:
-		readableState = "ready"
-	case StateNotReady:
-		readableState = "not_ready"
-	case StateIgnore:
-		readableState = "ignored"
-	default:
-		readableState = "unknown"
-	}
-
-	return json.MarshalIndent(&struct {
-		*Alias
-		Ready string `json:"state"`
-	}{
-		Alias: (*Alias)(s),
-		Ready: readableState,
-	}, "", "  ")
+func (s ServiceState) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
 }

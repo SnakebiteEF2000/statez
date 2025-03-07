@@ -8,34 +8,43 @@ import (
 // write a /ready and /healthz handler that first of all handles the checks correctly and expose 200/503
 
 func (s *Statez) ReadynessHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	if len(s.registry) <= 0 {
+		http.Error(w, "no service registered", http.StatusInternalServerError)
+		return
+	}
 
-	isReady := s.CheckServiceReadyState()
-	if isReady {
+	serviceState := s.CheckServiceReadyState()
+
+	if serviceState {
 		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 
-	type Response struct {
-		RegisteredServices []ServiceHandler `json:"registered_services"`
-		SystemReady        bool             `json:"system_ready"`
+	type mslService struct {
+		Name   string       `json:"name"`
+		Status ServiceState `json:"status"`
 	}
 
-	services := make([]ServiceHandler, 0, len(s.registry))
-	s.registryMu.RLock()
+	dat := struct {
+		Application      string       `json:"app"`
+		Services         []mslService `json:"services"`
+		ApplicationReady bool         `json:"application_ready"`
+	}{
+		Application:      s.Name,
+		ApplicationReady: serviceState,
+	}
+
 	for _, v := range s.registry {
-		services = append(services, v.GetInfo())
-	}
-	s.registryMu.RUnlock()
-
-	response := Response{
-		RegisteredServices: services,
-		SystemReady:        isReady,
+		var newMslService mslService
+		newMslService.Name = v.GetName()
+		newMslService.Status = v.GetState()
+		dat.Services = append(dat.Services, newMslService)
 	}
 
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := json.NewEncoder(w).Encode(dat); err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+
 }
