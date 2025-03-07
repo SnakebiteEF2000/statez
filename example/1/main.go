@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	sz := statez.NewStatez("example")
+	sz := statez.NewStatez("example1")
 
 	testSvc := statez.NewService("mqtt handler")
 	// change this to StateReady() to make the application ready
