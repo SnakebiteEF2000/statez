@@ -4,56 +4,38 @@ import (
 	"sync/atomic"
 )
 
-type ServiceState int32
-
-const (
-	StateIgnore ServiceState = iota - 1
-	StateNotReady
-	StateReady
-)
-
-var readyStateName = map[ServiceState]string{
-	StateIgnore:   "ignored",
-	StateNotReady: "not ready",
-	StateReady:    "ready",
-}
-
-func (ss ServiceState) String() string {
-	return readyStateName[ss]
-}
-
-type Service interface {
-	GetState() ServiceState
-	GetName() string
-	// IsHealthy() int for now disabled
-}
-
-type StateHandler struct {
+// Service is the shipped implementation of the ServiceIF interface that Statez requires
+type Service struct {
 	Name  string `json:"name"`
 	Ready int32  `json:"state"` // 0 = no ready; 1 = ready; -1 = ignore state
 }
 
-func NewServiceHandlerWithOpts(name string) *StateHandler { // add the opts part not just a name variable
-	return &StateHandler{Name: name, Ready: 0}
+func NewService(name string) *Service { // add the opts part not just a name variable
+	return &Service{Name: name, Ready: 0}
 }
 
-func (s *StateHandler) StateReady() {
+// StateReady sets the ready value to 1
+func (s *Service) StateReady() {
 	atomic.StoreInt32(&s.Ready, 1)
 }
 
-func (s *StateHandler) StateNotReady() {
+// StateNotReady sets the ready value to 0
+func (s *Service) StateNotReady() {
 	atomic.StoreInt32(&s.Ready, 0)
 }
 
-func (s *StateHandler) StateIgnore() {
+// StateIgnore sets the ready value to -1
+func (s *Service) StateIgnore() {
 	atomic.StoreInt32(&s.Ready, -1)
 }
 
-func (s *StateHandler) GetState() ServiceState {
+// GetState retrives the current state as ServiceState
+func (s *Service) GetState() ServiceState {
 	return ServiceState(atomic.LoadInt32(&s.Ready))
 }
 
-func (s *StateHandler) GetName() string {
+// GetName returns the name of the Service
+func (s *Service) GetName() string {
 	return s.Name
 }
 

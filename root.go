@@ -5,34 +5,42 @@ import (
 	"sync"
 )
 
+// Statez is the application wide Service registry
 type Statez struct {
-	Name string
+	name string
 	// Registry
-	registry   []Service
+	registry   []ServiceIf
 	registryMu sync.RWMutex
 }
 
 func NewStatez(name string) *Statez {
 	return &Statez{
 		name,
-		make([]Service, 0),
+		make([]ServiceIf, 0),
 		sync.RWMutex{},
 	}
 }
 
-func (s *Statez) RegisterService(svc ...Service) {
+type ServiceIf interface {
+	GetState() ServiceState
+	GetName() string
+	// IsHealthy() int for now disabled
+}
+
+// RegisterService adds Services to the application registry
+func (s *Statez) RegisterService(svc ...ServiceIf) {
 	s.registryMu.Lock()
 	defer s.registryMu.Unlock()
 	s.registry = append(s.registry, svc...)
 }
 
-func (s *Statez) CheckServiceReadyState() bool {
+// GetReadyState checks the registered services and returns false if any one of the services has StateNotReady set. Services with a StateIgnore set are skipped
+func (s *Statez) GetReadyState() bool {
 	s.registryMu.RLock()
 	defer s.registryMu.RUnlock()
 
 	for _, svc := range s.registry {
 		if svc.GetState() == StateIgnore {
-			// -1 is an ignored service that was registered but is currently disabled i.e. by a sheduler
 			continue
 		} else if svc.GetState() == StateNotReady {
 			return false

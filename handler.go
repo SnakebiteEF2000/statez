@@ -5,15 +5,13 @@ import (
 	"net/http"
 )
 
-// write a /ready and /healthz handler that first of all handles the checks correctly and expose 200/503
-
-func (s *Statez) ReadynessHandler(w http.ResponseWriter, _ *http.Request) {
+func (s *Statez) ReadinessHandler(w http.ResponseWriter, _ *http.Request) {
 	if len(s.registry) <= 0 {
 		http.Error(w, "no service registered", http.StatusInternalServerError)
 		return
 	}
 
-	serviceState := s.CheckServiceReadyState()
+	serviceState := s.GetReadyState()
 
 	if serviceState {
 		w.WriteHeader(http.StatusOK)
@@ -28,11 +26,12 @@ func (s *Statez) ReadynessHandler(w http.ResponseWriter, _ *http.Request) {
 
 	dat := struct {
 		Application      string       `json:"app"`
-		Services         []mslService `json:"services"`
 		ApplicationReady bool         `json:"application_ready"`
+		Services         []mslService `json:"services"`
 	}{
-		Application:      s.Name,
-		ApplicationReady: serviceState,
+		s.name,
+		serviceState,
+		make([]mslService, 0),
 	}
 
 	for _, v := range s.registry {
