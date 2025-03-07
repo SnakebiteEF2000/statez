@@ -1,12 +1,14 @@
-# statez
-Simple application healthiness lib
+package main
 
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"time"
 
-## Usage
+	"github.com/SnakebiteEF2000/statez"
+)
 
-look at examples in /example
-
-```go
 type natsService struct {
 	name          string
 	statezService *statez.Service
@@ -25,7 +27,15 @@ func main() {
 
 	// go natsSvc.Run or do action
 
+	fmt.Println(natsSvc.statezService.GetState())
+
+	go func(n natsService) {
+		time.Sleep(5 * time.Second)
+		natsSvc.statezService.StateReady()
+		fmt.Println(natsSvc.statezService.GetState())
+
+	}(natsSvc)
+
 	http.HandleFunc("/ready", sz.ReadinessHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
-```
