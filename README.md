@@ -1,5 +1,5 @@
 # statez
-Simple application healthiness lib
+Simple application state lib
 
 
 ## Usage
